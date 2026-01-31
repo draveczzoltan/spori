@@ -17,13 +17,21 @@ const App = () => {
   
   // Adatok betöltése a helyi tárolóból (localStorage)
   const [balance, setBalance] = useState(() => {
-    const savedBalance = localStorage.getItem('betting_balance');
-    return savedBalance ? JSON.parse(savedBalance) : 10000;
+    try {
+      const savedBalance = localStorage.getItem('betting_balance');
+      return savedBalance ? JSON.parse(savedBalance) : 10000;
+    } catch (e) {
+      return 10000;
+    }
   });
   
   const [myTips, setMyTips] = useState(() => {
-    const savedTips = localStorage.getItem('betting_tips');
-    return savedTips ? JSON.parse(savedTips) : [];
+    try {
+      const savedTips = localStorage.getItem('betting_tips');
+      return savedTips ? JSON.parse(savedTips) : [];
+    } catch (e) {
+      return [];
+    }
   });
   
   // Adatok mentése, ha változás történik
