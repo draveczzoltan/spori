@@ -14,14 +14,33 @@ import {
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('my-tips');
-  const [balance, setBalance] = useState(10000);
-  const [myTips, setMyTips] = useState([]);
   
+  // Adatok betöltése a helyi tárolóból (localStorage)
+  const [balance, setBalance] = useState(() => {
+    const savedBalance = localStorage.getItem('betting_balance');
+    return savedBalance ? JSON.parse(savedBalance) : 10000;
+  });
+  
+  const [myTips, setMyTips] = useState(() => {
+    const savedTips = localStorage.getItem('betting_tips');
+    return savedTips ? JSON.parse(savedTips) : [];
+  });
+  
+  // Adatok mentése, ha változás történik
+  useEffect(() => {
+    localStorage.setItem('betting_balance', JSON.stringify(balance));
+  }, [balance]);
+
+  useEffect(() => {
+    localStorage.setItem('betting_tips', JSON.stringify(myTips));
+  }, [myTips]);
+
   // Form State
   const [newTip, setNewTip] = useState({
     homeTeam: '',
     awayTeam: '',
     odds: '',
+    stake: '1000',
     pick: 'Igen', // Mindkét csapat szerez gólt: Igen/Nem
     date: new Date().toISOString().split('T')[0]
   });
@@ -31,18 +50,28 @@ const App = () => {
     e.preventDefault();
     if (!newTip.homeTeam || !newTip.awayTeam || !newTip.odds) return;
 
+    const stakeNum = parseFloat(newTip.stake) || 0;
+    if (stakeNum > balance) {
+      alert("Nincs elég egyenleged ehhez a fogadáshoz!");
+      return;
+    }
+
     const tipObject = {
       ...newTip,
       id: Date.now(),
       status: 'pending', // pending, won, lost
-      market: 'Mindkét csapat szerez gólt'
+      market: 'Mindkét csapat szerez gólt',
+      stake: stakeNum
     };
 
     setMyTips([tipObject, ...myTips]);
+    setBalance(prev => prev - stakeNum);
+    
     setNewTip({
       homeTeam: '',
       awayTeam: '',
       odds: '',
+      stake: '1000',
       pick: 'Igen',
       date: new Date().toISOString().split('T')[0]
     });
@@ -50,10 +79,23 @@ const App = () => {
   };
 
   const updateTipStatus = (id, status) => {
-    setMyTips(myTips.map(tip => tip.id === id ? { ...tip, status } : tip));
+    setMyTips(myTips.map(tip => {
+      if (tip.id === id && tip.status === 'pending') {
+        if (status === 'won') {
+          const winAmount = tip.stake * parseFloat(tip.odds);
+          setBalance(prev => prev + winAmount);
+        }
+        return { ...tip, status };
+      }
+      return tip;
+    }));
   };
 
   const deleteTip = (id) => {
+    const tipToDelete = myTips.find(t => t.id === id);
+    if (tipToDelete && tipToDelete.status === 'pending') {
+      setBalance(prev => prev + tipToDelete.stake);
+    }
     setMyTips(myTips.filter(tip => tip.id !== id));
   };
 
@@ -142,11 +184,11 @@ const App = () => {
                   <div className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800/50">
                     <div>
                       <p className="text-[10px] text-slate-500 uppercase font-bold">Választás</p>
-                      <p className={`font-bold ${tip.pick === 'Igen' ? 'text-green-400' : 'text-red-400'}`}>Mindkét csapat szerez gólt: {tip.pick}</p>
+                      <p className={`font-bold ${tip.pick === 'Igen' ? 'text-green-400' : 'text-red-400'}`}>BTTS: {tip.pick}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-slate-500 uppercase font-bold">Odds</p>
-                      <p className="font-mono font-bold text-white text-lg">{parseFloat(tip.odds).toFixed(2)}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Tét / Odds</p>
+                      <p className="font-mono font-bold text-white text-md">{tip.stake} Ft @ {parseFloat(tip.odds).toFixed(2)}</p>
                     </div>
                   </div>
 
@@ -168,7 +210,7 @@ const App = () => {
                       </>
                     ) : (
                       <div className={`w-full py-2 rounded-xl text-center text-xs font-black uppercase tracking-tighter ${tip.status === 'won' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {tip.status === 'won' ? 'Gratulálunk! Nyertes szelvény' : 'Sajnos nem jött be'}
+                        {tip.status === 'won' ? `Nyert: ${Math.round(tip.stake * tip.odds)} Ft` : 'Sajnos nem jött be'}
                       </div>
                     )}
                   </div>
@@ -195,6 +237,7 @@ const App = () => {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     value={newTip.homeTeam}
                     onChange={(e) => setNewTip({...newTip, homeTeam: e.target.value})}
+                    required
                   />
                 </div>
                 <div>
@@ -205,6 +248,7 @@ const App = () => {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     value={newTip.awayTeam}
                     onChange={(e) => setNewTip({...newTip, awayTeam: e.target.value})}
+                    required
                   />
                 </div>
               </div>
@@ -219,15 +263,18 @@ const App = () => {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all font-mono"
                     value={newTip.odds}
                     onChange={(e) => setNewTip({...newTip, odds: e.target.value})}
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Dátum</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Tét (Ft)</label>
                   <input 
-                    type="date" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all text-sm"
-                    value={newTip.date}
-                    onChange={(e) => setNewTip({...newTip, date: e.target.value})}
+                    type="number" 
+                    placeholder="1000"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all font-mono"
+                    value={newTip.stake}
+                    onChange={(e) => setNewTip({...newTip, stake: e.target.value})}
+                    required
                   />
                 </div>
               </div>
@@ -273,7 +320,7 @@ const App = () => {
               <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
                 <p className="text-xs text-slate-500 uppercase font-black mb-2 tracking-widest">Win Rate</p>
                 <p className="text-4xl font-black text-indigo-400">
-                  {stats.total > 0 ? Math.round((stats.won / (stats.won + stats.lost || 1)) * 100) : 0}%
+                  {stats.total > 0 && (stats.won + stats.lost > 0) ? Math.round((stats.won / (stats.won + stats.lost)) * 100) : 0}%
                 </p>
               </div>
             </div>
