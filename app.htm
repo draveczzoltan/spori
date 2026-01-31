@@ -1,0 +1,336 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Target, 
+  PlusCircle, 
+  Wallet, 
+  Trophy, 
+  History, 
+  Trash2, 
+  CheckCircle2, 
+  XCircle,
+  LayoutGrid,
+  ClipboardList
+} from 'lucide-react';
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState('my-tips');
+  const [balance, setBalance] = useState(10000);
+  const [myTips, setMyTips] = useState([]);
+  
+  // Form State
+  const [newTip, setNewTip] = useState({
+    homeTeam: '',
+    awayTeam: '',
+    odds: '',
+    pick: 'Igen', // Mindkét csapat szerez gólt: Igen/Nem
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  // Handle adding a new tip
+  const handleAddTip = (e) => {
+    e.preventDefault();
+    if (!newTip.homeTeam || !newTip.awayTeam || !newTip.odds) return;
+
+    const tipObject = {
+      ...newTip,
+      id: Date.now(),
+      status: 'pending', // pending, won, lost
+      market: 'Mindkét csapat szerez gólt'
+    };
+
+    setMyTips([tipObject, ...myTips]);
+    setNewTip({
+      homeTeam: '',
+      awayTeam: '',
+      odds: '',
+      pick: 'Igen',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setActiveTab('my-tips');
+  };
+
+  const updateTipStatus = (id, status) => {
+    setMyTips(myTips.map(tip => tip.id === id ? { ...tip, status } : tip));
+  };
+
+  const deleteTip = (id) => {
+    setMyTips(myTips.filter(tip => tip.id !== id));
+  };
+
+  const stats = {
+    total: myTips.length,
+    won: myTips.filter(t => t.status === 'won').length,
+    lost: myTips.filter(t => t.status === 'lost').length,
+    pending: myTips.filter(t => t.status === 'pending').length
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-24">
+      {/* Header */}
+      <header className="bg-slate-900 p-4 border-b border-slate-800 sticky top-0 z-10">
+        <div className="flex justify-between items-center max-w-2xl mx-auto">
+          <div className="flex items-center gap-2">
+            <div className="bg-indigo-600 p-1.5 rounded-lg">
+              <Trophy className="text-white" size={20} />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight">SajátTippek</h1>
+          </div>
+          <div className="bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700">
+            <span className="text-xs text-slate-400 mr-2">BANKROLL</span>
+            <span className="font-mono font-bold text-green-400">{balance.toLocaleString()} Ft</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 max-w-2xl mx-auto space-y-6">
+        
+        {/* Navigation Tabs */}
+        <div className="flex bg-slate-900 p-1 rounded-2xl gap-1 border border-slate-800">
+          <button 
+            onClick={() => setActiveTab('my-tips')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${activeTab === 'my-tips' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            <ClipboardList size={18} />
+            Tippjeim
+          </button>
+          <button 
+            onClick={() => setActiveTab('add')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${activeTab === 'add' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            <PlusCircle size={18} />
+            Új Feltöltés
+          </button>
+          <button 
+            onClick={() => setActiveTab('stats')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${activeTab === 'stats' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            <LayoutGrid size={18} />
+            Statisztika
+          </button>
+        </div>
+
+        {/* MY TIPS LIST */}
+        {activeTab === 'my-tips' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center px-1">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-300">
+                <History size={20} className="text-indigo-500" />
+                Aktív és lezárt tippek
+              </h2>
+            </div>
+
+            {myTips.length === 0 ? (
+              <div className="bg-slate-900 border border-dashed border-slate-800 rounded-3xl p-12 text-center text-slate-500">
+                <Target className="mx-auto mb-4 opacity-20" size={48} />
+                <p>Még nem töltöttél fel saját tippet.</p>
+                <button onClick={() => setActiveTab('add')} className="mt-4 text-indigo-400 font-bold hover:underline">Tipp hozzáadása most</button>
+              </div>
+            ) : (
+              myTips.map((tip) => (
+                <div key={tip.id} className={`bg-slate-900 border ${tip.status === 'won' ? 'border-green-500/30' : tip.status === 'lost' ? 'border-red-500/30' : 'border-slate-800'} rounded-2xl p-4 transition-all`}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md">BTTS PIAC</span>
+                      <h3 className="text-md font-bold mt-2">{tip.homeTeam} - {tip.awayTeam}</h3>
+                      <p className="text-xs text-slate-500 mt-1">{tip.date}</p>
+                    </div>
+                    <button onClick={() => deleteTip(tip.id)} className="text-slate-600 hover:text-red-400 p-1">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800/50">
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Választás</p>
+                      <p className={`font-bold ${tip.pick === 'Igen' ? 'text-green-400' : 'text-red-400'}`}>Mindkét csapat szerez gólt: {tip.pick}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Odds</p>
+                      <p className="font-mono font-bold text-white text-lg">{parseFloat(tip.odds).toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    {tip.status === 'pending' ? (
+                      <>
+                        <button 
+                          onClick={() => updateTipStatus(tip.id, 'won')}
+                          className="flex-1 bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/20 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle2 size={14} /> NYERT
+                        </button>
+                        <button 
+                          onClick={() => updateTipStatus(tip.id, 'lost')}
+                          className="flex-1 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                        >
+                          <XCircle size={14} /> VESZTETT
+                        </button>
+                      </>
+                    ) : (
+                      <div className={`w-full py-2 rounded-xl text-center text-xs font-black uppercase tracking-tighter ${tip.status === 'won' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {tip.status === 'won' ? 'Gratulálunk! Nyertes szelvény' : 'Sajnos nem jött be'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ADD TIP FORM */}
+        {activeTab === 'add' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <PlusCircle className="text-indigo-500" />
+              Tipp Feltöltése
+            </h2>
+            <form onSubmit={handleAddTip} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Hazai Csapat</label>
+                  <input 
+                    type="text" 
+                    placeholder="Pl: Real Madrid"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    value={newTip.homeTeam}
+                    onChange={(e) => setNewTip({...newTip, homeTeam: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Vendég Csapat</label>
+                  <input 
+                    type="text" 
+                    placeholder="Pl: Barcelona"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    value={newTip.awayTeam}
+                    onChange={(e) => setNewTip({...newTip, awayTeam: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Odds</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    placeholder="1.85"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all font-mono"
+                    value={newTip.odds}
+                    onChange={(e) => setNewTip({...newTip, odds: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Dátum</label>
+                  <input 
+                    type="date" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all text-sm"
+                    value={newTip.date}
+                    onChange={(e) => setNewTip({...newTip, date: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-3 ml-1">Mindkét csapat szerez gólt?</label>
+                <div className="flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setNewTip({...newTip, pick: 'Igen'})}
+                    className={`flex-1 py-4 rounded-xl font-bold border-2 transition-all ${newTip.pick === 'Igen' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-slate-950 border-slate-800 text-slate-500'}`}
+                  >
+                    IGEN
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setNewTip({...newTip, pick: 'Nem'})}
+                    className={`flex-1 py-4 rounded-xl font-bold border-2 transition-all ${newTip.pick === 'Nem' ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-slate-950 border-slate-800 text-slate-500'}`}
+                  >
+                    NEM
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-500/20 transition-all mt-4 active:scale-95"
+              >
+                Tipp Mentése
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* STATS SECTION */}
+        {activeTab === 'stats' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
+                <p className="text-xs text-slate-500 uppercase font-black mb-2 tracking-widest">Összes tipp</p>
+                <p className="text-4xl font-black text-white">{stats.total}</p>
+              </div>
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
+                <p className="text-xs text-slate-500 uppercase font-black mb-2 tracking-widest">Win Rate</p>
+                <p className="text-4xl font-black text-indigo-400">
+                  {stats.total > 0 ? Math.round((stats.won / (stats.won + stats.lost || 1)) * 100) : 0}%
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Eredmények eloszlása</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-green-400 font-bold">NYERT</span>
+                    <span className="text-slate-400">{stats.won} db</span>
+                  </div>
+                  <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${(stats.won / (stats.total || 1)) * 100}%` }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-red-400 font-bold">VESZTETT</span>
+                    <span className="text-slate-400">{stats.lost} db</span>
+                  </div>
+                  <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${(stats.lost / (stats.total || 1)) * 100}%` }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-indigo-400 font-bold">FÜGGŐBEN</span>
+                    <span className="text-slate-400">{stats.pending} db</span>
+                  </div>
+                  <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${(stats.pending / (stats.total || 1)) * 100}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Mobile Footer Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 p-2 flex justify-around max-w-2xl mx-auto z-20 pb-safe">
+        <button onClick={() => setActiveTab('my-tips')} className={`flex flex-col items-center p-3 rounded-xl transition-colors ${activeTab === 'my-tips' ? 'text-indigo-400' : 'text-slate-600'}`}>
+          <ClipboardList size={22} />
+          <span className="text-[10px] mt-1 font-black">LISTA</span>
+        </button>
+        <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center p-3 rounded-xl transition-colors ${activeTab === 'add' ? 'text-indigo-400' : 'text-slate-600'}`}>
+          <PlusCircle size={22} />
+          <span className="text-[10px] mt-1 font-black">ÚJ TIPP</span>
+        </button>
+        <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center p-3 rounded-xl transition-colors ${activeTab === 'stats' ? 'text-indigo-400' : 'text-slate-600'}`}>
+          <LayoutGrid size={22} />
+          <span className="text-[10px] mt-1 font-black">STAT</span>
+        </button>
+      </nav>
+    </div>
+  );
+};
+
+export default App;
